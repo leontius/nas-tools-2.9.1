@@ -304,14 +304,14 @@ class Rss:
             
             # 自定义订阅下载
             rss_tasks = self.rssChecker._rss_tasks
-            executor = ThreadPoolExecutor(max_workers=20)
-            log.info("【Rss】自定义订阅开始处理，匹配到 %s 个有效资源" % len(rss_tasks))
-            all_task = []
-            for task in rss_tasks:
-                log.info("【Rss】%s 自定义订阅开始处理任务，匹配到名称为 %s 资源" % task.get("name"))
-                future = executor.submit(self.rssChecker.check_task_rss, task.get("id"))
-                all_task.append(future)
-            log.info("【Rss】自定义订阅处理完成，完成 %s 个任务", len(all_task))
+            with ThreadPoolExecutor(max_workers=10) as t:
+                log.info("【Rss】自定义订阅开始处理，匹配到 %s 个有效资源" % len(rss_tasks))
+                all_task = []
+                for task in rss_tasks:
+                    log.info("【Rss】%s 自定义订阅开始处理任务，匹配到名称为 %s 资源" % task.get("name"))
+                    future = t.submit(fn=self.rssChecker.check_task_rss, args=[task.get("id")])
+                    all_task.append(future)
+                log.info("【Rss】自定义订阅处理完成，完成 %s 个任务", len(all_task))
 
     @staticmethod
     def parse_rssxml(url):
