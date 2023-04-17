@@ -12,6 +12,8 @@ from app.sites import Sites
 from app.subscribe import Subscribe
 from app.utils import DomUtils, RequestUtils, StringUtils, ExceptionUtils, RssTitleUtils, Torrent
 from app.utils.types import MediaType, SearchType
+from concurrent.futures import ThreadPoolExecutor
+from app.rsschecker import RssChecker
 
 lock = Lock()
 
@@ -24,6 +26,8 @@ class Rss:
     searcher = None
     dbhelper = None
     subscribe = None
+    rssChecker = None
+    threadHelp = None
 
     def __init__(self):
         self.media = Media()
@@ -32,6 +36,7 @@ class Rss:
         self.filter = Filter()
         self.dbhelper = DbHelper()
         self.subscribe = Subscribe()
+        self.rssChecker = RssChecker()
         self.init_config()
 
     def init_config(self):
@@ -296,6 +301,17 @@ class Rss:
             # 开始择优下载
             self.download_rss_torrent(rss_download_torrents=rss_download_torrents,
                                       rss_no_exists=rss_no_exists)
+            
+            # 自定义订阅下载
+            rss_tasks = self.rssChecker._rss_tasks
+            executor = ThreadPoolExecutor(max_workers=20)
+            log.info("【Rss】自定义订阅开始处理，匹配到 %s 个有效资源" % len(rss_tasks))
+            all_task = []
+            for task in rss_tasks:
+                log.info("【Rss】%s 自定义订阅开始处理任务，匹配到名称为 %s 资源" % task.get("name"))
+                future = executor.submit(self.rssChecker.check_task_rss, task.get("id"))
+                all_task.append(future)
+            log.info("【Rss】自定义订阅处理完成，完成 %s 个任务", len(all_task))
 
     @staticmethod
     def parse_rssxml(url):
