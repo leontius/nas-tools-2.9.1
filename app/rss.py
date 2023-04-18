@@ -37,6 +37,7 @@ class Rss:
         self.dbhelper = DbHelper()
         self.subscribe = Subscribe()
         self.rssChecker = RssChecker()
+        self.rssChecker.init_config()
         self.init_config()
 
     def init_config(self):
@@ -303,12 +304,11 @@ class Rss:
                                       rss_no_exists=rss_no_exists)
             
             # 自定义订阅下载
-            rss_tasks = self.rssChecker._rss_tasks
-            log.info("【Rss】自定义订阅开始处理，匹配到 %s 个任务" % len(rss_tasks))
-            for task in rss_tasks:
-                log.info("【Rss】%s 自定义订阅开始处理任务，匹配到名称为 「%s」 任务" % task.get("name"))
-                self.rssChecker.check_task_rss(task.get("id"))
-            log.info("【Rss】自定义订阅处理完成，完成 %s 个任务", len(rss_tasks))
+            log.info("【Rss】自定义订阅开始处理，匹配到 %s 个任务" % len(self.rssChecker._rss_tasks))
+            with ThreadPoolExecutor(max_workers=20, thread_name_prefix="cst_rss_thread_pool") as t:
+                for task in self.rssChecker._rss_tasks:
+                    t.submit(self.rssChecker.check_task_rss, task.get("id"))
+            log.info("【Rss】自定义订阅处理完成，完成 %s 个任务", len(self.rssChecker._rss_tasks))
 
     @staticmethod
     def parse_rssxml(url):
