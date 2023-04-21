@@ -305,7 +305,7 @@ class Rss:
             
             # 自定义订阅下载
             log.info("【Rss】自定义订阅开始处理，匹配到 %s 个任务" % len(self.rssChecker._rss_tasks))
-            with ThreadPoolExecutor(max_workers=10, thread_name_prefix="cst_rss_thread_pool") as t:
+            with ThreadPoolExecutor(max_workers=4, thread_name_prefix="cst_rss_thread_pool") as t:
                 for task in self.rssChecker._rss_tasks:
                     t.submit(self.rssChecker.check_task_rss, task.get("id"))
             log.info("【Rss】自定义订阅处理完成，完成 %s 个任务", len(self.rssChecker._rss_tasks))

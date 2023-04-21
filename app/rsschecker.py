@@ -180,9 +180,10 @@ class RssChecker(object):
         # 处理RSS结果
         res_num = 0
         no_exists = {}
-        for res in rss_result:
-            try:
-                with lock:
+        
+        with lock:
+            for res in rss_result:
+                try:
                     # 种子名
                     title = res.get('title')
                     if not title:
@@ -315,61 +316,61 @@ class RssChecker(object):
                             res_num = res_num + 1
                     else:
                         continue
-            except Exception as e:
-                ExceptionUtils.exception_traceback(e)
-                log.error("【RssChecker】处理RSS发生错误：%s - %s" % (str(e), traceback.format_exc()))
-                continue
-        log.info("【RssChecker】%s 处理结束，匹配到 %s 个有效资源" % (taskinfo.get("name"), res_num))
-        # 添加下载
-        if rss_download_torrents:
-            for media in rss_download_torrents:
-                ret, ret_msg = self.downloader.download(media_info=media,
-                                                        download_dir=taskinfo.get("save_path"),
-                                                        download_setting=taskinfo.get("download_setting"))
-                if ret:
-                    self.message.send_download_message(in_from=SearchType.USERRSS,
-                                                       can_item=media)
-                    # 下载类型的 这里下载成功了 插入数据库
-                    self.dbhelper.insert_rss_torrents(media)
-                    # 登记自定义RSS任务下载记录
-                    downloader = self.downloader.get_default_client_type().value
-                    if media.download_setting:
-                        download_attr = self.downloader.get_download_setting(media.download_setting)
-                        if download_attr.get("downloader"):
-                            downloader = download_attr.get("downloader")
-                    self.dbhelper.insert_userrss_task_history(taskid, media.org_string, downloader)
-                else:
-                    log.error("【RssChecker】添加下载任务 %s 失败：%s" % (
-                        media.get_title_string(), ret_msg or "请检查下载任务是否已存在"))
-                    if ret_msg:
-                        self.message.send_download_fail_message(media, ret_msg)
-        # 添加订阅
-        if rss_subscribe_torrents:
-            for media in rss_subscribe_torrents:
-                code, msg, rss_media = self.subscribe.add_rss_subscribe(
-                    mtype=media.type,
-                    name=media.get_name(),
-                    year=media.year,
-                    season=media.begin_season,
-                    rss_sites=taskinfo.get("sites", {}).get("rss_sites"),
-                    search_sites=taskinfo.get("sites", {}).get("search_sites"),
-                    over_edition=True if taskinfo.get("over_edition") else False,
-                    filter_restype=taskinfo.get("filter_args", {}).get("restype"),
-                    filter_pix=taskinfo.get("filter_args", {}).get("pix"),
-                    filter_team=taskinfo.get("filter_args", {}).get("team"),
-                    filter_rule=taskinfo.get("filter"),
-                    save_path=taskinfo.get("save_path"),
-                    download_setting=taskinfo.get("download_setting"),
-                )
-                if rss_media and code == 0:
-                    self.message.send_rss_success_message(in_from=SearchType.USERRSS, media_info=rss_media)
-                else:
-                    log.warn("【RssChecker】%s 添加订阅失败：%s" % (media.get_name(), msg))
+                except Exception as e:
+                    ExceptionUtils.exception_traceback(e)
+                    log.error("【RssChecker】处理RSS发生错误：%s - %s" % (str(e), traceback.format_exc()))
+                    continue
+            log.info("【RssChecker】%s 处理结束，匹配到 %s 个有效资源" % (taskinfo.get("name"), res_num))
+            # 添加下载
+            if rss_download_torrents:
+                for media in rss_download_torrents:
+                    ret, ret_msg = self.downloader.download(media_info=media,
+                                                            download_dir=taskinfo.get("save_path"),
+                                                            download_setting=taskinfo.get("download_setting"))
+                    if ret:
+                        self.message.send_download_message(in_from=SearchType.USERRSS,
+                                                        can_item=media)
+                        # 下载类型的 这里下载成功了 插入数据库
+                        self.dbhelper.insert_rss_torrents(media)
+                        # 登记自定义RSS任务下载记录
+                        downloader = self.downloader.get_default_client_type().value
+                        if media.download_setting:
+                            download_attr = self.downloader.get_download_setting(media.download_setting)
+                            if download_attr.get("downloader"):
+                                downloader = download_attr.get("downloader")
+                        self.dbhelper.insert_userrss_task_history(taskid, media.org_string, downloader)
+                    else:
+                        log.error("【RssChecker】添加下载任务 %s 失败：%s" % (
+                            media.get_title_string(), ret_msg or "请检查下载任务是否已存在"))
+                        if ret_msg:
+                            self.message.send_download_fail_message(media, ret_msg)
+            # 添加订阅
+            if rss_subscribe_torrents:
+                for media in rss_subscribe_torrents:
+                    code, msg, rss_media = self.subscribe.add_rss_subscribe(
+                        mtype=media.type,
+                        name=media.get_name(),
+                        year=media.year,
+                        season=media.begin_season,
+                        rss_sites=taskinfo.get("sites", {}).get("rss_sites"),
+                        search_sites=taskinfo.get("sites", {}).get("search_sites"),
+                        over_edition=True if taskinfo.get("over_edition") else False,
+                        filter_restype=taskinfo.get("filter_args", {}).get("restype"),
+                        filter_pix=taskinfo.get("filter_args", {}).get("pix"),
+                        filter_team=taskinfo.get("filter_args", {}).get("team"),
+                        filter_rule=taskinfo.get("filter"),
+                        save_path=taskinfo.get("save_path"),
+                        download_setting=taskinfo.get("download_setting"),
+                    )
+                    if rss_media and code == 0:
+                        self.message.send_rss_success_message(in_from=SearchType.USERRSS, media_info=rss_media)
+                    else:
+                        log.warn("【RssChecker】%s 添加订阅失败：%s" % (media.get_name(), msg))
 
-        # 更新状态
-        counter = len(rss_download_torrents) + len(rss_subscribe_torrents) + len(rss_search_torrents)
-        if counter:
-            self.dbhelper.update_userrss_task_info(taskid, counter)
+            # 更新状态
+            counter = len(rss_download_torrents) + len(rss_subscribe_torrents) + len(rss_search_torrents)
+            if counter:
+                self.dbhelper.update_userrss_task_info(taskid, counter)
 
     def __parse_userrss_result(self, taskinfo):
         """
